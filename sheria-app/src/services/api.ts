@@ -89,25 +89,27 @@ export async function* sendChatMessageStream(
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") return;
-        if (data) {
-          try {
-            const parsed = JSON.parse(data);
-            const token =
-              parsed?.token ??
-              parsed?.content ??
-              parsed?.text ??
-              parsed?.delta?.content ??
-              parsed;
-            if (typeof token === "string") {
-              yield token;
-            }
-          } catch {
-            // Yield raw data if not JSON
-            yield data;
+      // Handle both "data: token" and "data:token" formats
+      if (line.startsWith("data:")) {
+        const data = line.startsWith("data: ")
+          ? line.slice(6).trim()
+          : line.slice(5).trim();
+
+        if (!data || data === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const token =
+            parsed?.token ??
+            parsed?.content ??
+            parsed?.text ??
+            parsed?.delta?.content;
+          if (typeof token === "string") {
+            yield token;
           }
+        } catch {
+          // Backend sends plain text tokens — yield directly
+          yield data;
         }
       }
     }

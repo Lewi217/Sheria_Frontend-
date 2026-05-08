@@ -4,6 +4,7 @@
 
 export interface UploadResponse {
   message: string;
+  documentId?: string;
   document_id?: string;
   filename?: string;
   status?: string;
@@ -27,15 +28,14 @@ export interface Source {
 }
 
 export interface ChatRequest {
-  query: string;
-  document_id?: string;
-  conversation_history?: Array<{ role: string; content: string }>;
+  question: string;
+  documentId?: string | null;
 }
 
 export interface ChatResponse {
-  answer: string;
+  answer: string | string[];
   sources?: Source[];
-  query?: string;
+  chunksRetrieved?: number;
   [key: string]: unknown;
 }
 

@@ -94,10 +94,10 @@ export default function ChatInterface({
       };
       setMessages((prev) => [...prev, placeholderMsg]);
 
+      // Fixed: use "question" and "documentId" to match Java backend DTO
       const payload = {
-        query: text.trim(),
-        document_id: selectedDocumentId || undefined,
-        conversation_history: buildHistory(),
+        question: text.trim(),
+        documentId: selectedDocumentId || null,
       };
 
       try {
@@ -133,7 +133,9 @@ export default function ChatInterface({
             if (last && last.isStreaming) {
               updated[updated.length - 1] = {
                 ...last,
-                content: response.answer || "I couldn't process that request.",
+                content: Array.isArray(response.answer)
+                  ? response.answer.join("\n")
+                  : response.answer || "I couldn't process that request.",
                 sources: response.sources,
                 isStreaming: false,
               };
@@ -232,7 +234,6 @@ export default function ChatInterface({
         minHeight: 0,
       }}>
         {messages.length === 0 ? (
-          /* Empty State */
           <div style={{
             display: "flex",
             flexDirection: "column",
@@ -265,7 +266,6 @@ export default function ChatInterface({
                 : "Upload a legal document first, then ask questions about its contents."}
             </p>
 
-            {/* Starter Questions */}
             {selectedDoc && (
               <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 480 }}>
                 <p style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 4 }}>
@@ -306,7 +306,6 @@ export default function ChatInterface({
 
       {/* Input Form */}
       <div style={{ flexShrink: 0, paddingTop: 16 }}>
-        {/* Clear chat button */}
         {messages.length > 0 && (
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
             <button className="btn-ghost" onClick={clearChat} style={{ fontSize: "12px", padding: "4px 10px" }}>
@@ -325,9 +324,7 @@ export default function ChatInterface({
             border: "1px solid var(--color-border)",
             borderRadius: "var(--radius-xl)",
             transition: "border-color 0.2s",
-          }}
-            onFocus={() => {}}
-          >
+          }}>
             <textarea
               ref={textareaRef}
               id="chat-input"
