@@ -5,9 +5,7 @@ import {
   UploadResponse,
 } from "@/types";
 
-// ========================
-// Document Upload API
-// ========================
+
 export async function uploadDocument(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -27,9 +25,6 @@ export async function uploadDocument(file: File): Promise<UploadResponse> {
   return response.json();
 }
 
-// ========================
-// Chat API (synchronous)
-// ========================
 export async function sendChatMessage(
   payload: ChatRequest
 ): Promise<ChatResponse> {
@@ -52,9 +47,7 @@ export async function sendChatMessage(
   return response.json();
 }
 
-// ========================
-// Chat Stream API (SSE)
-// ========================
+
 export async function* sendChatMessageStream(
   payload: ChatRequest
 ): AsyncGenerator<string, void, unknown> {
@@ -89,28 +82,27 @@ export async function* sendChatMessageStream(
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
-      // Handle both "data: token" and "data:token" formats
-      if (line.startsWith("data:")) {
-        const data = line.startsWith("data: ")
-          ? line.slice(6).trim()
-          : line.slice(5).trim();
+  
+      if (!line.startsWith("data:")) continue;
 
-        if (!data || data === "[DONE]") continue;
+      const data = line.startsWith("data: ")
+        ? line.slice(6) 
+        : line.slice(5);
 
-        try {
-          const parsed = JSON.parse(data);
-          const token =
-            parsed?.token ??
-            parsed?.content ??
-            parsed?.text ??
-            parsed?.delta?.content;
-          if (typeof token === "string") {
-            yield token;
-          }
-        } catch {
-          // Backend sends plain text tokens — yield directly
-          yield data;
-        }
+    
+      if (data === "" || data === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        const token =
+          parsed?.token ??
+          parsed?.content ??
+          parsed?.text ??
+          parsed?.delta?.content;
+        if (typeof token === "string") yield token;
+      } catch {
+      
+        yield data;
       }
     }
   }
