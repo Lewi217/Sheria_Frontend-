@@ -85,12 +85,10 @@ export async function* sendChatMessageStream(
   
       if (!line.startsWith("data:")) continue;
 
-      const data = line.startsWith("data: ")
-        ? line.slice(6) 
-        : line.slice(5);
+      const data = line.slice(5);
 
-    
-      if (data === "" || data === "[DONE]") continue;
+  
+      if (data === "" || data.trimStart() === "[DONE]") continue;
 
       try {
         const parsed = JSON.parse(data);
@@ -101,7 +99,7 @@ export async function* sendChatMessageStream(
           parsed?.delta?.content;
         if (typeof token === "string") yield token;
       } catch {
-      
+        // Plain text token — yield with spaces intact
         yield data;
       }
     }
