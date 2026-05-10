@@ -54,7 +54,7 @@ export default function UploadZone({ onUploadComplete }: UploadZoneProps) {
         setUploadStatus("success");
 
         const doc: UploadedDocument = {
-          id: response.document_id || `doc_${Date.now()}`,
+          id: response.documentId || `doc_${Date.now()}`,
           filename: response.filename || file.name,
           uploadedAt: new Date(),
           size: file.size,
