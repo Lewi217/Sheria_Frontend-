@@ -53,6 +53,7 @@ function normalizeContent(raw: string): string {
   return text.trim();
 }
 
+
 function InlineText({ text }: { text: string }) {
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
   return (
@@ -92,6 +93,7 @@ function InlineText({ text }: { text: string }) {
 
 function MarkdownText({ text }: { text: string }) {
   const normalized = normalizeContent(text);
+  console.log("=== NORMALIZED ===\n", normalized);
   const lines = normalized.split("\n");
   const elements: React.ReactNode[] = [];
   let key = 0;
