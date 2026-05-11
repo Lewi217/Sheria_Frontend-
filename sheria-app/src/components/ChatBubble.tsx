@@ -22,30 +22,170 @@ function SourceCitations({ sources }: { sources: Source[] }) {
   );
 }
 
-function MarkdownText({ text }: { text: string }) {
+// Renders inline bold/italic/code within a line
+function InlineText({ text }: { text: string }) {
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
   return (
-    <span className="markdown-content" style={{ display: "block" }}>
+    <>
       {parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={i}>{part.slice(2, -2)}</strong>;
+          return (
+            <strong key={i} style={{ color: "var(--purple-400)", fontWeight: 700 }}>
+              {part.slice(2, -2)}
+            </strong>
+          );
         }
         if (part.startsWith("*") && part.endsWith("*")) {
           return <em key={i}>{part.slice(1, -1)}</em>;
         }
         if (part.startsWith("`") && part.endsWith("`")) {
-          return <code key={i}>{part.slice(1, -1)}</code>;
+          return (
+            <code key={i} style={{
+              background: "rgba(99,102,241,0.1)",
+              padding: "1px 5px",
+              borderRadius: 4,
+              fontSize: "13px",
+              fontFamily: "monospace",
+            }}>
+              {part.slice(1, -1)}
+            </code>
+          );
         }
-        // Handle newlines
-        return part.split("\n").map((line, j, arr) => (
-          <React.Fragment key={`${i}-${j}`}>
-            {line}
-            {j < arr.length - 1 && <br />}
-          </React.Fragment>
-        ));
+        return <React.Fragment key={i}>{part}</React.Fragment>;
       })}
-    </span>
+    </>
   );
+}
+
+function MarkdownText({ text }: { text: string }) {
+  // Split into lines and filter truly empty ones
+  const lines = text.split("\n");
+
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+
+    // Skip blank lines (just add spacing)
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // ── Section header: "Summary:", "Key Points:", "Legal Citation:"
+    // Also handles "**Summary:**" markdown format
+    const cleanedForHeader = trimmed.replace(/\*\*/g, "");
+    const isHeader =
+      (cleanedForHeader.endsWith(":") &&
+        !trimmed.match(/^\d+\./) &&
+        !trimmed.startsWith("-") &&
+        !trimmed.startsWith("•") &&
+        trimmed.length < 60);
+
+    if (isHeader) {
+      elements.push(
+        <div key={i} style={{
+          marginTop: elements.length > 0 ? 20 : 0,
+          marginBottom: 8,
+          paddingBottom: 6,
+          borderBottom: "1px solid rgba(99,102,241,0.2)",
+        }}>
+          <span style={{
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--purple-400)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}>
+            <InlineText text={cleanedForHeader} />
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── Numbered list item: "1. text", "2. text"
+    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+    if (numberedMatch) {
+      elements.push(
+        <div key={i} style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: 8,
+          alignItems: "flex-start",
+        }}>
+          <span style={{
+            flexShrink: 0,
+            width: 24,
+            height: 24,
+            background: "rgba(99,102,241,0.12)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "11px",
+            fontWeight: 700,
+            color: "var(--purple-400)",
+            marginTop: 1,
+          }}>
+            {numberedMatch[1]}
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.7, fontSize: "14px" }}>
+            <InlineText text={numberedMatch[2]} />
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── Bullet point: "- text" or "• text"
+    const bulletMatch = trimmed.match(/^[-•]\s+(.+)$/);
+    if (bulletMatch) {
+      elements.push(
+        <div key={i} style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: 8,
+          alignItems: "flex-start",
+        }}>
+          <span style={{
+            flexShrink: 0,
+            color: "var(--purple-400)",
+            fontWeight: 700,
+            fontSize: "16px",
+            lineHeight: 1.5,
+          }}>
+            ·
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.7, fontSize: "14px" }}>
+            <InlineText text={bulletMatch[1]} />
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── Regular paragraph
+    elements.push(
+      <p key={i} style={{
+        marginBottom: 10,
+        lineHeight: 1.75,
+        fontSize: "14px",
+        color: "var(--text-primary)",
+      }}>
+        <InlineText text={trimmed} />
+      </p>
+    );
+    i++;
+  }
+
+  return <div className="markdown-content">{elements}</div>;
 }
 
 export default function ChatBubble({ message }: ChatBubbleProps) {
@@ -105,9 +245,7 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
               <div className="typing-dot" />
             </div>
           ) : (
-            <div style={{ fontSize: "14px", lineHeight: 1.75, color: "var(--text-primary)" }}>
-              <MarkdownText text={message.content} />
-            </div>
+            <MarkdownText text={message.content} />
           )}
 
           {message.sources && message.sources.length > 0 && (
@@ -115,7 +253,6 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
           )}
         </div>
 
-        {/* Copy button */}
         {message.content && !message.isStreaming && (
           <button
             className="btn-ghost"
