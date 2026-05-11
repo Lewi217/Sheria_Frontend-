@@ -15,14 +15,29 @@ function SourceCitations({ sources }: { sources: Source[] }) {
       {sources.map((src, i) => (
         <span key={i} className="source-pill">
           <BookIcon size={12} />
-          {src.page != null ? `Page ${src.page}` : src.document || `Source ${i + 1}`}
+          {src.page != null
+            ? `Page ${src.page}`
+            : src.document || `Source ${i + 1}`}
         </span>
       ))}
     </div>
   );
 }
 
-// Renders inline bold/italic/code within a line
+function normalizeContent(raw: string): string {
+  let text = raw;
+  text = text.replace(/(?<!\n)\s*(\*\*[A-Za-z ]+:+\*\*)/g, "\n\n$1");
+  text = text.replace(
+    /(?<!\n)\s*\b(Summary|Key Points?|Legal Citations?|Specific Legal Citations?|Overview|Background|Conclusion|Important Note|Note):\s*/gi,
+    "\n\n$1:\n"
+  );
+  text = text.replace(/([^\n])\s+(\d+\.\s+)/g, "$1\n$2");
+  text = text.replace(/\.\.\s+/g, ".\n");
+  text = text.replace(/\s+-\s+(Citation|Source|Reference):/gi, "\n  - $1:");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
+}
+
 function InlineText({ text }: { text: string }) {
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
   return (
@@ -40,13 +55,16 @@ function InlineText({ text }: { text: string }) {
         }
         if (part.startsWith("`") && part.endsWith("`")) {
           return (
-            <code key={i} style={{
-              background: "rgba(99,102,241,0.1)",
-              padding: "1px 5px",
-              borderRadius: 4,
-              fontSize: "13px",
-              fontFamily: "monospace",
-            }}>
+            <code
+              key={i}
+              style={{
+                background: "rgba(99,102,241,0.12)",
+                padding: "1px 5px",
+                borderRadius: 4,
+                fontSize: "13px",
+                fontFamily: "monospace",
+              }}
+            >
               {part.slice(1, -1)}
             </code>
           );
@@ -58,131 +76,143 @@ function InlineText({ text }: { text: string }) {
 }
 
 function MarkdownText({ text }: { text: string }) {
-  // Split into lines and filter truly empty ones
-  const lines = text.split("\n");
-
+  const normalized = normalizeContent(text);
+  const lines = normalized.split("\n");
   const elements: React.ReactNode[] = [];
-  let i = 0;
+  let key = 0;
 
-  while (i < lines.length) {
-    const raw = lines[i];
-    const trimmed = raw.trim();
-
-    // Skip blank lines (just add spacing)
-    if (!trimmed) {
-      i++;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      elements.push(<div key={key++} style={{ height: 8 }} />);
       continue;
     }
 
-    // ── Section header: "Summary:", "Key Points:", "Legal Citation:"
-    // Also handles "**Summary:**" markdown format
-    const cleanedForHeader = trimmed.replace(/\*\*/g, "");
-    const isHeader =
-      (cleanedForHeader.endsWith(":") &&
-        !trimmed.match(/^\d+\./) &&
-        !trimmed.startsWith("-") &&
-        !trimmed.startsWith("•") &&
-        trimmed.length < 60);
-
-    if (isHeader) {
+    const boldHeader = line.match(/^\*\*([^*]+?):?\*\*:?$/);
+    if (boldHeader) {
       elements.push(
-        <div key={i} style={{
-          marginTop: elements.length > 0 ? 20 : 0,
-          marginBottom: 8,
-          paddingBottom: 6,
-          borderBottom: "1px solid rgba(99,102,241,0.2)",
-        }}>
-          <span style={{
-            fontSize: "13px",
-            fontWeight: 700,
-            color: "var(--purple-400)",
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}>
-            <InlineText text={cleanedForHeader} />
+        <div
+          key={key++}
+          style={{
+            marginTop: 16,
+            marginBottom: 6,
+            paddingBottom: 5,
+            borderBottom: "1px solid rgba(99,102,241,0.2)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              color: "var(--purple-400)",
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+            }}
+          >
+            {boldHeader[1].replace(/:+$/, "")}
           </span>
         </div>
       );
-      i++;
       continue;
     }
 
-    // ── Numbered list item: "1. text", "2. text"
-    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
-    if (numberedMatch) {
+    const plainHeader = line.match(
+      /^(Summary|Key Points?|Legal Citations?|Specific Legal Citations?|Overview|Background|Conclusion|Important Note|Note):$/i
+    );
+    if (plainHeader) {
       elements.push(
-        <div key={i} style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: 8,
-          alignItems: "flex-start",
-        }}>
-          <span style={{
-            flexShrink: 0,
-            width: 24,
-            height: 24,
-            background: "rgba(99,102,241,0.12)",
-            border: "1px solid rgba(99,102,241,0.25)",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "11px",
-            fontWeight: 700,
-            color: "var(--purple-400)",
-            marginTop: 1,
-          }}>
-            {numberedMatch[1]}
+        <div
+          key={key++}
+          style={{
+            marginTop: elements.length > 0 ? 16 : 0,
+            marginBottom: 6,
+            paddingBottom: 5,
+            borderBottom: "1px solid rgba(99,102,241,0.2)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              color: "var(--purple-400)",
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+            }}
+          >
+            {plainHeader[1]}
+          </span>
+        </div>
+      );
+      continue;
+    }
+
+    const numbered = line.match(/^(\d+)\.\s+(.+)$/);
+    if (numbered) {
+      elements.push(
+        <div
+          key={key++}
+          style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}
+        >
+          <span
+            style={{
+              flexShrink: 0,
+              width: 22,
+              height: 22,
+              background: "rgba(99,102,241,0.12)",
+              border: "1px solid rgba(99,102,241,0.25)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "var(--purple-400)",
+              marginTop: 2,
+            }}
+          >
+            {numbered[1]}
           </span>
           <span style={{ flex: 1, lineHeight: 1.7, fontSize: "14px" }}>
-            <InlineText text={numberedMatch[2]} />
+            <InlineText text={numbered[2]} />
           </span>
         </div>
       );
-      i++;
       continue;
     }
 
-    // ── Bullet point: "- text" or "• text"
-    const bulletMatch = trimmed.match(/^[-•]\s+(.+)$/);
-    if (bulletMatch) {
+    const bullet = line.match(/^[-•]\s+(.+)$/);
+    if (bullet) {
       elements.push(
-        <div key={i} style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: 8,
-          alignItems: "flex-start",
-        }}>
-          <span style={{
-            flexShrink: 0,
-            color: "var(--purple-400)",
-            fontWeight: 700,
-            fontSize: "16px",
-            lineHeight: 1.5,
-          }}>
-            ·
-          </span>
+        <div
+          key={key++}
+          style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}
+        >
+          <span
+            style={{
+              flexShrink: 0,
+              width: 6,
+              height: 6,
+              background: "var(--purple-400)",
+              borderRadius: "50%",
+              marginTop: 8,
+            }}
+          />
           <span style={{ flex: 1, lineHeight: 1.7, fontSize: "14px" }}>
-            <InlineText text={bulletMatch[1]} />
+            <InlineText text={bullet[1]} />
           </span>
         </div>
       );
-      i++;
       continue;
     }
 
-    // ── Regular paragraph
     elements.push(
-      <p key={i} style={{
-        marginBottom: 10,
-        lineHeight: 1.75,
-        fontSize: "14px",
-        color: "var(--text-primary)",
-      }}>
-        <InlineText text={trimmed} />
+      <p
+        key={key++}
+        style={{ marginBottom: 8, lineHeight: 1.75, fontSize: "14px", color: "var(--text-primary)" }}
+      >
+        <InlineText text={line} />
       </p>
     );
-    i++;
   }
 
   return <div className="markdown-content">{elements}</div>;
@@ -212,18 +242,15 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
 
   return (
     <div style={{ display: "flex", gap: 12, marginBottom: 20, padding: "0 4px", alignItems: "flex-start" }}>
-      {/* AI Avatar */}
-      <div style={{
-        width: 36,
-        height: 36,
-        flexShrink: 0,
-        background: "linear-gradient(135deg, #6366f1, #a855f7)",
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
-      }}>
+      <div
+        style={{
+          width: 36, height: 36, flexShrink: 0,
+          background: "linear-gradient(135deg, #6366f1, #a855f7)",
+          borderRadius: "50%", display: "flex", alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
+        }}
+      >
         <SparklesIcon size={18} style={{ color: "white" }} />
       </div>
 
@@ -247,7 +274,6 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
           ) : (
             <MarkdownText text={message.content} />
           )}
-
           {message.sources && message.sources.length > 0 && (
             <SourceCitations sources={message.sources} />
           )}
@@ -258,7 +284,6 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
             className="btn-ghost"
             onClick={handleCopy}
             style={{ marginTop: 4, fontSize: "12px", padding: "4px 10px" }}
-            title="Copy response"
           >
             <CopyIcon size={12} />
             {copied ? "Copied!" : "Copy"}
