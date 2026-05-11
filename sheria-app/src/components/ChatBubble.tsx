@@ -26,15 +26,30 @@ function SourceCitations({ sources }: { sources: Source[] }) {
 
 function normalizeContent(raw: string): string {
   let text = raw;
-  text = text.replace(/(?<!\n)\s*(\*\*[A-Za-z ]+:+\*\*)/g, "\n\n$1");
-  text = text.replace(
-    /(?<!\n)\s*\b(Summary|Key Points?|Legal Citations?|Specific Legal Citations?|Overview|Background|Conclusion|Important Note|Note):\s*/gi,
-    "\n\n$1:\n"
-  );
-  text = text.replace(/([^\n])\s+(\d+\.\s+)/g, "$1\n$2");
+
+  const sectionKeywords = [
+    "Summary",
+    "Key Points",
+    "Key Point",
+    "Legal Citation",
+    "Legal Citations",
+    "Specific Legal Citations",
+    "Overview",
+    "Background",
+    "Conclusion",
+    "Important Note",
+    "Note",
+  ];
+
+  for (const kw of sectionKeywords) {
+    text = text.replace(new RegExp(`\\s*\\*\\*${kw}:?\\*\\*:?\\s*`, "gi"), `\n\n**${kw}:**\n`);
+    text = text.replace(new RegExp(`\\s*${kw}:\\s*`, "gi"), `\n\n${kw}:\n`);
+  }
+
+  text = text.replace(/([^\n])\s*(\d+\.\s)/g, "$1\n$2");
   text = text.replace(/\.\.\s+/g, ".\n");
-  text = text.replace(/\s+-\s+(Citation|Source|Reference):/gi, "\n  - $1:");
   text = text.replace(/\n{3,}/g, "\n\n");
+
   return text.trim();
 }
 
