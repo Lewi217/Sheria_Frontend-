@@ -38,22 +38,29 @@ function normalizeContent(raw: string): string {
       `${kw}:`
     );
   }
+
   for (const kw of sectionKeywords) {
     text = text.replace(
       new RegExp(`\\s*${kw}:\\s*`, "gi"),
       `\n\n${kw}:\n`
     );
   }
+
   text = text.replace(/\.\.\s*/g, "\n• ");
+  text = text.replace(/\)\.\s+([A-Z][a-zA-Z /&-]{2,}:)/g, ").\n• $1");
+  text = text.replace(/\.\s+([A-Z][a-zA-Z /&-]{3,}:)\s+/g, ".\n• $1 ");
+
   text = text.replace(/\s+-\s+/g, "\n  • ");
   text = text.replace(/^\.+\s*/gm, "");
   text = text.replace(/^\s*\*+\s*$/gm, "");
+
   for (const kw of sectionKeywords) {
     text = text.replace(
       new RegExp(`(\\n\\n${kw}:\\n)\\s*\\n*${kw}:\\n`, "gi"),
       "$1"
     );
   }
+
   text = text.replace(/([^\n])\s*(\d+\.\s)/g, "$1\n$2");
   text = text.replace(/\n{3,}/g, "\n\n");
 
