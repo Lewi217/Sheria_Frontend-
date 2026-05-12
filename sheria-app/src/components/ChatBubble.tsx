@@ -15,9 +15,7 @@ function SourceCitations({ sources }: { sources: Source[] }) {
       {sources.map((src, i) => (
         <span key={i} className="source-pill">
           <BookIcon size={12} />
-          {src.page != null
-            ? `Page ${src.page}`
-            : src.document || `Source ${i + 1}`}
+          {src.page != null ? `Page ${src.page}` : src.document || `Source ${i + 1}`}
         </span>
       ))}
     </div>
@@ -44,13 +42,16 @@ function normalizeContent(raw: string): string {
       `\n\n${kw}:\n`
     );
   }
+
   text = text.replace(/\.\.\s*/g, "\n• ");
+  text = text.replace(/\s+-\s+/g, "\n  • ");
+  text = text.replace(/^\.\s+/gm, "");
   text = text.replace(/^\s*\*+\s*$/gm, "");
   text = text.replace(/([^\n])\s*(\d+\.\s)/g, "$1\n$2");
   text = text.replace(/\n{3,}/g, "\n\n");
+
   return text.trim();
 }
-
 
 function InlineText({ text }: { text: string }) {
   const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
@@ -69,16 +70,13 @@ function InlineText({ text }: { text: string }) {
         }
         if (part.startsWith("`") && part.endsWith("`")) {
           return (
-            <code
-              key={i}
-              style={{
-                background: "rgba(99,102,241,0.12)",
-                padding: "1px 5px",
-                borderRadius: 4,
-                fontSize: "13px",
-                fontFamily: "monospace",
-              }}
-            >
+            <code key={i} style={{
+              background: "rgba(99,102,241,0.12)",
+              padding: "1px 5px",
+              borderRadius: 4,
+              fontSize: "13px",
+              fontFamily: "monospace",
+            }}>
               {part.slice(1, -1)}
             </code>
           );
@@ -91,13 +89,13 @@ function InlineText({ text }: { text: string }) {
 
 function MarkdownText({ text }: { text: string }) {
   const normalized = normalizeContent(text);
-  console.log("=== NORMALIZED ===\n", normalized);
   const lines = normalized.split("\n");
   const elements: React.ReactNode[] = [];
   let key = 0;
 
   for (const raw of lines) {
     const line = raw.trim();
+
     if (!line) {
       elements.push(<div key={key++} style={{ height: 8 }} />);
       continue;
@@ -106,24 +104,14 @@ function MarkdownText({ text }: { text: string }) {
     const boldHeader = line.match(/^\*\*([^*]+?):?\*\*:?$/);
     if (boldHeader) {
       elements.push(
-        <div
-          key={key++}
-          style={{
-            marginTop: 16,
-            marginBottom: 6,
-            paddingBottom: 5,
-            borderBottom: "1px solid rgba(99,102,241,0.2)",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 800,
-              color: "var(--purple-400)",
-              textTransform: "uppercase",
-              letterSpacing: "0.07em",
-            }}
-          >
+        <div key={key++} style={{
+          marginTop: 16, marginBottom: 6, paddingBottom: 5,
+          borderBottom: "1px solid rgba(99,102,241,0.2)",
+        }}>
+          <span style={{
+            fontSize: "11px", fontWeight: 800, color: "var(--purple-400)",
+            textTransform: "uppercase", letterSpacing: "0.07em",
+          }}>
             {boldHeader[1].replace(/:+$/, "")}
           </span>
         </div>
@@ -136,25 +124,35 @@ function MarkdownText({ text }: { text: string }) {
     );
     if (plainHeader) {
       elements.push(
-        <div
-          key={key++}
-          style={{
-            marginTop: elements.length > 0 ? 16 : 0,
-            marginBottom: 6,
-            paddingBottom: 5,
-            borderBottom: "1px solid rgba(99,102,241,0.2)",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 800,
-              color: "var(--purple-400)",
-              textTransform: "uppercase",
-              letterSpacing: "0.07em",
-            }}
-          >
+        <div key={key++} style={{
+          marginTop: elements.length > 0 ? 16 : 0, marginBottom: 6,
+          paddingBottom: 5, borderBottom: "1px solid rgba(99,102,241,0.2)",
+        }}>
+          <span style={{
+            fontSize: "11px", fontWeight: 800, color: "var(--purple-400)",
+            textTransform: "uppercase", letterSpacing: "0.07em",
+          }}>
             {plainHeader[1]}
+          </span>
+        </div>
+      );
+      continue;
+    }
+
+    const indentedBullet = raw.match(/^\s{1,4}[•]\s+(.+)$/);
+    if (indentedBullet) {
+      elements.push(
+        <div key={key++} style={{
+          display: "flex", gap: 8, marginBottom: 5,
+          alignItems: "flex-start", paddingLeft: 20,
+        }}>
+          <span style={{
+            flexShrink: 0, width: 4, height: 4,
+            background: "rgba(99,102,241,0.5)",
+            borderRadius: "50%", marginTop: 9,
+          }} />
+          <span style={{ flex: 1, lineHeight: 1.65, fontSize: "13px", color: "var(--text-secondary)" }}>
+            <InlineText text={indentedBullet[1]} />
           </span>
         </div>
       );
@@ -164,27 +162,15 @@ function MarkdownText({ text }: { text: string }) {
     const numbered = line.match(/^(\d+)\.\s+(.+)$/);
     if (numbered) {
       elements.push(
-        <div
-          key={key++}
-          style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}
-        >
-          <span
-            style={{
-              flexShrink: 0,
-              width: 22,
-              height: 22,
-              background: "rgba(99,102,241,0.12)",
-              border: "1px solid rgba(99,102,241,0.25)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "var(--purple-400)",
-              marginTop: 2,
-            }}
-          >
+        <div key={key++} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
+          <span style={{
+            flexShrink: 0, width: 22, height: 22,
+            background: "rgba(99,102,241,0.12)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            borderRadius: "50%", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: "11px", fontWeight: 700,
+            color: "var(--purple-400)", marginTop: 2,
+          }}>
             {numbered[1]}
           </span>
           <span style={{ flex: 1, lineHeight: 1.7, fontSize: "14px" }}>
@@ -198,20 +184,11 @@ function MarkdownText({ text }: { text: string }) {
     const bullet = line.match(/^[-•]\s+(.+)$/);
     if (bullet) {
       elements.push(
-        <div
-          key={key++}
-          style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}
-        >
-          <span
-            style={{
-              flexShrink: 0,
-              width: 6,
-              height: 6,
-              background: "var(--purple-400)",
-              borderRadius: "50%",
-              marginTop: 8,
-            }}
-          />
+        <div key={key++} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
+          <span style={{
+            flexShrink: 0, width: 6, height: 6,
+            background: "var(--purple-400)", borderRadius: "50%", marginTop: 8,
+          }} />
           <span style={{ flex: 1, lineHeight: 1.7, fontSize: "14px" }}>
             <InlineText text={bullet[1]} />
           </span>
@@ -220,11 +197,30 @@ function MarkdownText({ text }: { text: string }) {
       continue;
     }
 
+    const isSubHeader =
+      line.endsWith(":") &&
+      line.length <= 80 &&
+      !line.match(/^\d+\./) &&
+      !line.startsWith("•") &&
+      !line.startsWith("  •");
+
+    if (isSubHeader) {
+      elements.push(
+        <p key={key++} style={{
+          fontWeight: 700, color: "var(--text-primary)",
+          marginTop: 10, marginBottom: 4, fontSize: "13px",
+        }}>
+          <InlineText text={line} />
+        </p>
+      );
+      continue;
+    }
+
     elements.push(
-      <p
-        key={key++}
-        style={{ marginBottom: 8, lineHeight: 1.75, fontSize: "14px", color: "var(--text-primary)" }}
-      >
+      <p key={key++} style={{
+        marginBottom: 8, lineHeight: 1.75, fontSize: "14px",
+        color: "var(--text-primary)",
+      }}>
         <InlineText text={line} />
       </p>
     );
@@ -257,15 +253,13 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
 
   return (
     <div style={{ display: "flex", gap: 12, marginBottom: 20, padding: "0 4px", alignItems: "flex-start" }}>
-      <div
-        style={{
-          width: 36, height: 36, flexShrink: 0,
-          background: "linear-gradient(135deg, #6366f1, #a855f7)",
-          borderRadius: "50%", display: "flex", alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
-        }}
-      >
+      <div style={{
+        width: 36, height: 36, flexShrink: 0,
+        background: "linear-gradient(135deg, #6366f1, #a855f7)",
+        borderRadius: "50%", display: "flex", alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 16px rgba(99, 102, 241, 0.3)",
+      }}>
         <SparklesIcon size={18} style={{ color: "white" }} />
       </div>
 
